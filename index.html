@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="T Tracker">
+<title>T Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --bg:        #07101c;
+  --surface:   #0c1b2e;
+  --surface2:  #112340;
+  --navy:      #0f2444;
+  --blue:      #1d4ed8;
+  --cyan:      #22d3ee;
+  --cyan-dim:  rgba(34,211,238,0.12);
+  --success:   #10b981;
+  --warn:      #f59e0b;
+  --danger:    #ef4444;
+  --text:      #dbeafe;
+  --text-dim:  #5b8ab5;
+  --border:    rgba(34,211,238,0.13);
+  --mono:      'DM Mono', monospace;
+  --display:   'Syne', sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+/* Subtle grid overlay */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(34,211,238,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34,211,238,0.025) 1px, transparent 1px);
+  background-size: 44px 44px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.app {
+  position: relative; z-index: 1;
+  max-width: 430px; margin: 0 auto;
+  padding-bottom: 90px;
+}
+
+/* ── HEADER ── */
+.header {
+  padding: 52px 20px 0;
+  position: sticky; top: 0; z-index: 100;
+  background: linear-gradient(180deg, rgba(7,16,28,0.97) 70%, transparent 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.header-row {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding-bottom: 10px;
+}
+
+.wordmark {
+  font-family: var(--display);
+  font-size: 26px; font-weight: 800;
+  letter-spacing: -0.5px; line-height: 1;
+  color: var(--text);
+}
+.wordmark em { color: var(--cyan); font-style: normal; }
+
+.badge {
+  text-align: right;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 10px; line-height: 1.7;
+  color: var(--cyan);
+}
+
+/* backend status bar */
+.status-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 0 12px;
+  font-size: 11px; color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+}
+.dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--text-dim); flex-shrink: 0;
+  transition: background 0.3s, box-shadow 0.3s;
+}
+.dot.ok     { background: var(--success); box-shadow: 0 0 6px var(--success); }
+.dot.busy   { background: var(--warn); animation: blink 0.9s infinite; }
+.dot.err    { background: var(--danger); }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+.status-action {
+  margin-left: auto;
+  background: none; border: 1px solid var(--border);
+  border-radius: 6px; padding: 3px 8px;
+  color: var(--cyan); font-family: var(--mono); font-size: 11px;
+  cursor: pointer;
+}
+
+/* ── TABS ── */
+.tabs {
+  display: flex;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.tab {
+  flex: 1; padding: 11px 4px;
+  font-family: var(--mono); font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-dim);
+  background: none; border: none; border-bottom: 2px solid transparent;
+  margin-bottom: -1px; cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tab.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+
+/* ── SECTIONS ── */
+.section { display: none; padding: 20px; }
+.section.active { display: block; }
+
+/* ── LABEL ── */
+.label {
+  font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--text-dim);
+  margin-bottom: 6px; display: block;
+}
+
+/* ── NEXT CARD ── */
+.next-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px; padding: 18px;
+  margin-bottom: 18px; position: relative; overflow: hidden;
+}
+.next-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--blue), var(--cyan));
+}
+.next-date {
+  font-family: var(--display);
+  font-size: 20px; font-weight: 700;
+  color: var(--text); margin-bottom: 2px;
+}
+.next-sub { font-size: 12px; color: var(--text-dim); }
+
+/* ── FORM ── */
+.form-group { margin-bottom: 16px; }
+
+.site-btns { display: flex; gap: 8px; }
+.site-btn {
+  flex: 1; padding: 13px 6px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; color: var(--text-dim);
+  font-family: var(--mono); font-size: 13px;
+  cursor: pointer; transition: all 0.15s; text-align: center;
+}
+.site-btn.active {
+  background: var(--cyan-dim);
+  border-color: var(--cyan); color: var(--cyan);
+}
+
+.date-field, .notes-field {
+  width: 100%;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px;
+  color: var(--text); font-family: var(--mono); font-size: 14px;
+  outline: none; transition: border-color 0.2s;
+  -webkit-appearance: none;
+  color-scheme: dark;
+}
+.date-field:focus, .notes-field:focus { border-color: var(--cyan); }
+.notes-field { resize: none; height: 76px; font-size: 13px; }
+.notes-field::placeholder { color: var(--text-dim); }
+
+.by-field {
+  width: 100%;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px;
+  color: var(--text); font-family: var(--mono); font-size: 14px;
+  outline: none; transition: border-color 0.2s;
+  -webkit-appearance: none;
+}
+.by-field:focus { border-color: var(--cyan); }
+
+.log-btn {
+  width: 100%; padding: 16px;
+  background: linear-gradient(135deg, #1d4ed8, #22d3ee);
+  border: none; border-radius: 12px;
+  color: #fff; font-family: var(--display);
+  font-size: 16px; font-weight: 700;
+  cursor: pointer; letter-spacing: 0.02em;
+  transition: opacity 0.2s, transform 0.1s;
+  margin-top: 4px;
+}
+.log-btn:active { transform: scale(0.98); opacity: 0.85; }
+.log-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.toast {
+  position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 20px;
+  font-size: 13px; color: var(--text);
+  opacity: 0; transition: opacity 0.3s;
+  pointer-events: none; white-space: nowrap;
+  z-index: 999;
+}
+.toast.show { opacity: 1; }
+.toast.success { border-color: var(--success); color: var(--success); }
+.toast.error   { border-color: var(--danger);  color: var(--danger); }
+
+/* ── STATS ── */
+.stats {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 10px; margin-bottom: 18px;
+}
+.stat-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 14px 10px; text-align: center;
+}
+.stat-num {
+  font-family: var(--display);
+  font-size: 30px; font-weight: 800;
+  color: var(--cyan); line-height: 1;
+}
+.stat-label {
+  font-size: 10px; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.07em; margin-top: 4px;
+}
+
+/* ── HISTORY ── */
+.history-list { display: flex; flex-direction: column; gap: 8px; }
+
+.history-item {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 14px 16px;
+  display: flex; align-items: center; gap: 12px;
+}
+.history-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--success); flex-shrink: 0;
+  box-shadow: 0 0 6px var(--success);
+}
+.history-dot.pending { background: var(--text-dim); box-shadow: none; }
+.history-info { flex: 1; min-width: 0; }
+.history-date {
+  font-size: 13px; font-weight: 500; color: var(--text);
+}
+.history-meta {
+  font-size: 11px; color: var(--text-dim); margin-top: 2px;
+}
+.history-badge {
+  font-size: 10px; padding: 3px 8px;
+  border-radius: 20px; white-space: nowrap; flex-shrink: 0;
+}
+.history-badge.done {
+  background: rgba(16,185,129,0.12);
+  border: 1px solid rgba(16,185,129,0.3);
+  color: var(--success);
+}
+.history-badge.pending {
+  background: rgba(91,138,181,0.1);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+
+.empty-state {
+  text-align: center; padding: 40px 20px;
+  color: var(--text-dim); font-size: 13px;
+}
+
+/* ── SETTINGS ── */
+.setting-group {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; overflow: hidden; margin-bottom: 14px;
+}
+.setting-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 1px solid var(--border);
+  font-size: 13px; color: var(--text);
+}
+.setting-row:last-child { border-bottom: none; }
+.setting-row span { color: var(--text-dim); font-size: 12px; }
+
+.setting-btn {
+  background: none; border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 12px;
+  color: var(--cyan); font-family: var(--mono); font-size: 12px;
+  cursor: pointer;
+}
+.setting-btn.danger { color: var(--danger); border-color: rgba(239,68,68,0.3); }
+
+.url-input {
+  width: 100%; margin-top: 10px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px;
+  color: var(--text); font-family: var(--mono); font-size: 12px;
+  outline: none;
+}
+.url-input:focus { border-color: var(--cyan); }
+.url-input::placeholder { color: var(--text-dim); }
+
+.save-url-btn {
+  margin-top: 10px; width: 100%; padding: 12px;
+  background: var(--cyan-dim); border: 1px solid var(--cyan);
+  border-radius: 10px; color: var(--cyan);
+  font-family: var(--mono); font-size: 13px;
+  cursor: pointer;
+}
+
+/* ── PENDING BANNER ── */
+.pending-banner {
+  display: none;
+  margin-bottom: 14px; padding: 10px 14px;
+  background: rgba(245,158,11,0.08);
+  border: 1px solid rgba(245,158,11,0.25);
+  border-radius: 10px;
+  font-size: 12px; color: var(--warn);
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.pending-banner.hidden { display: none; }
+.sync-btn {
+  background: none; border: 1px solid rgba(245,158,11,0.4);
+  border-radius: 6px; padding: 4px 10px;
+  color: var(--warn); font-family: var(--mono); font-size: 11px;
+  cursor: pointer; white-space: nowrap;
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-row">
+      <div class="wordmark">T<em>.</em>Tracker</div>
+      <div class="badge">125mg weekly<br>IM / Glute</div>
+    </div>
+    <div class="status-bar">
+      <div class="dot" id="statusDot"></div>
+      <span id="statusText">Checking backend...</span>
+      <button class="status-action" onclick="showTab('settings')">Config</button>
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('log')">Log</button>
+      <button class="tab" onclick="showTab('history')">History</button>
+      <button class="tab" onclick="showTab('settings')">Settings</button>
+    </div>
+  </div>
+
+  <!-- LOG TAB -->
+  <div class="section active" id="tab-log">
+
+    <div class="next-card">
+      <div class="label">Next injection</div>
+      <div class="next-date" id="nextDate">-</div>
+      <div class="next-sub" id="nextSub">-</div>
+    </div>
+
+    <div id="pendingBanner" class="pending-banner hidden">
+      <span id="pendingText"></span>
+      <button class="sync-btn" onclick="syncPending()">Sync now</button>
+    </div>
+
+    <div class="form-group">
+      <label class="label">Date</label>
+      <input type="date" class="date-field" id="injDate">
+    </div>
+
+    <div class="form-group">
+      <label class="label">Site</label>
+      <div class="site-btns">
+        <button class="site-btn active" id="btn-lg" onclick="selectSite('Left glute')">Left glute</button>
+        <button class="site-btn" id="btn-rg" onclick="selectSite('Right glute')">Right glute</button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="label">Administered by</label>
+      <input type="text" class="by-field" id="injBy" placeholder="Self / Carey / Clinic">
+    </div>
+
+    <div class="form-group">
+      <label class="label">Notes (optional)</label>
+      <textarea class="notes-field" id="injNotes" placeholder="Any observations, reactions, reminders..."></textarea>
+    </div>
+
+    <button class="log-btn" id="logBtn" onclick="logInjection()">LOG INJECTION</button>
+  </div>
+
+  <!-- HISTORY TAB -->
+  <div class="section" id="tab-history">
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-num" id="statDone">-</div>
+        <div class="stat-label">Done</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="statRemaining">-</div>
+        <div class="stat-label">Left</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="statTotal">52</div>
+        <div class="stat-label">Total</div>
+      </div>
+    </div>
+    <div class="history-list" id="historyList">
+      <div class="empty-state">Loading history...</div>
+    </div>
+  </div>
+
+  <!-- SETTINGS TAB -->
+  <div class="section" id="tab-settings">
+    <div class="setting-group">
+      <div class="setting-row">
+        Backend URL
+        <button class="setting-btn" onclick="toggleUrlInput()">Edit</button>
+      </div>
+      <div style="padding: 0 16px 16px; display:none" id="urlInputWrap">
+        <input type="url" class="url-input" id="urlInput"
+          placeholder="https://script.google.com/macros/s/.../exec">
+        <button class="save-url-btn" onclick="saveUrl()">Save URL</button>
+      </div>
+      <div class="setting-row">
+        Protocol
+        <span>250mg/1mL - 0.5mL weekly</span>
+      </div>
+      <div class="setting-row">
+        Prescriber
+        <span>Dr. Naomi Achong</span>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <div class="setting-row">
+        Pending (unsynced)
+        <span id="settingPending">0</span>
+      </div>
+      <div class="setting-row">
+        <button class="setting-btn" onclick="syncPending()">Force sync</button>
+        <button class="setting-btn danger" onclick="clearPending()">Clear pending</button>
+      </div>
+    </div>
+
+    <div style="padding: 20px 0; font-size: 11px; color: var(--text-dim); line-height: 1.8;">
+      <strong style="color:var(--text)">Setup instructions</strong><br><br>
+      1. Open your Google Sheet.<br>
+      2. Extensions > Apps Script.<br>
+      3. Paste the Apps Script code (see below).<br>
+      4. Deploy > New deployment > Web app.<br>
+      5. Execute as: Me | Access: Anyone.<br>
+      6. Copy the /exec URL and paste it above.
+      <br><br>
+      <strong style="color:var(--text)">Apps Script code</strong><br><br>
+      <div style="background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:12px; font-size:10px; color:var(--cyan); white-space:pre-wrap; word-break:break-all;" id="scriptCode"></div>
+      <button class="save-url-btn" style="margin-top:8px" onclick="copyScript()">Copy script</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── SCHEDULE ──
+// 52 weekly injections starting 3 May 2026, alternating glutes
+const START = new Date('2026-05-03');
+const TOTAL = 52;
+const SITES = ['Left glute', 'Right glute'];
+
+function getSchedule() {
+  return Array.from({ length: TOTAL }, (_, i) => {
+    const d = new Date(START);
+    d.setDate(d.getDate() + i * 7);
+    return {
+      num: i + 1,
+      date: fmtDate(d),
+      site: SITES[i % 2],
+    };
+  });
+}
+
+function fmtDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function parseDate(s) {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function displayDate(s) {
+  const d = parseDate(s);
+  return d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+// ── STATE ──
+const KEY_URL     = 'tt_url';
+const KEY_PENDING = 'tt_pending';
+const KEY_LOGGED  = 'tt_logged';
+
+function getUrl()     { return localStorage.getItem(KEY_URL) || ''; }
+function getPending() { return JSON.parse(localStorage.getItem(KEY_PENDING) || '[]'); }
+function getLogged()  { return JSON.parse(localStorage.getItem(KEY_LOGGED)  || '[]'); }
+
+function savePending(arr) { localStorage.setItem(KEY_PENDING, JSON.stringify(arr)); }
+function saveLogged(arr)  { localStorage.setItem(KEY_LOGGED,  JSON.stringify(arr)); }
+
+// ── SELECTED SITE ──
+let selectedSite = 'Left glute';
+function selectSite(s) {
+  selectedSite = s;
+  document.getElementById('btn-lg').classList.toggle('active', s === 'Left glute');
+  document.getElementById('btn-rg').classList.toggle('active', s === 'Right glute');
+}
+
+// ── NEXT INJECTION ──
+function updateNextCard() {
+  const logged = getLogged();
+  const loggedDates = new Set(logged.map(r => r.date));
+  const schedule = getSchedule();
+  const today = fmtDate(new Date());
+
+  const next = schedule.find(s => !loggedDates.has(s.date) && s.date >= today);
+  if (next) {
+    document.getElementById('nextDate').textContent = displayDate(next.date);
+    document.getElementById('nextSub').textContent =
+      `Injection ${next.num} of ${TOTAL} - ${next.site}`;
+    // Pre-fill form
+    document.getElementById('injDate').value = next.date;
+    selectSite(next.site);
+  } else {
+    document.getElementById('nextDate').textContent = 'All done!';
+    document.getElementById('nextSub').textContent  = 'Programme complete.';
+  }
+}
+
+// ── HISTORY ──
+function renderHistory() {
+  const logged   = getLogged();
+  const schedule = getSchedule();
+  const logMap   = {};
+  logged.forEach(r => { logMap[r.date] = r; });
+
+  let done = 0, remaining = 0;
+  const items = schedule.map(s => {
+    const rec = logMap[s.date];
+    if (rec) { done++; return { ...s, rec, status: 'done' }; }
+    remaining++;
+    return { ...s, status: 'pending' };
+  });
+
+  document.getElementById('statDone').textContent      = done;
+  document.getElementById('statRemaining').textContent = remaining;
+
+  const list = document.getElementById('historyList');
+  if (items.length === 0) {
+    list.innerHTML = '<div class="empty-state">No injections scheduled yet.</div>';
+    return;
+  }
+
+  // Show done items newest first, then upcoming oldest first
+  const done_items    = items.filter(i => i.status === 'done').reverse();
+  const pending_items = items.filter(i => i.status === 'pending');
+  const sorted = [...done_items, ...pending_items];
+
+  list.innerHTML = sorted.map(item => {
+    const isDone = item.status === 'done';
+    const meta = isDone
+      ? `${item.rec.site} - ${item.rec.by || 'self'}${item.rec.notes ? ' - ' + item.rec.notes : ''}`
+      : item.site;
+    return `
+      <div class="history-item">
+        <div class="history-dot ${isDone ? '' : 'pending'}"></div>
+        <div class="history-info">
+          <div class="history-date">${displayDate(item.date)}</div>
+          <div class="history-meta">${meta}</div>
+        </div>
+        <div class="history-badge ${isDone ? 'done' : 'pending'}">${isDone ? 'done' : '#' + item.num}</div>
+      </div>`;
+  }).join('');
+}
+
+// ── PENDING BANNER ──
+function updatePendingBanner() {
+  const p = getPending();
+  const banner = document.getElementById('pendingBanner');
+  const text   = document.getElementById('pendingText');
+  const settingPending = document.getElementById('settingPending');
+  settingPending.textContent = p.length;
+  if (p.length > 0) {
+    banner.classList.remove('hidden');
+    text.textContent = `${p.length} unsynced injection${p.length > 1 ? 's' : ''}`;
+  } else {
+    banner.classList.add('hidden');
+  }
+}
+
+// ── LOG ──
+async function logInjection() {
+  const date  = document.getElementById('injDate').value;
+  const by    = document.getElementById('injBy').value.trim() || 'self';
+  const notes = document.getElementById('injNotes').value.trim();
+
+  if (!date) { showToast('Pick a date first', 'error'); return; }
+
+  const record = {
+    date, site: selectedSite, dose: 0.5, by, notes,
+    loggedAt: new Date().toISOString()
+  };
+
+  // Save locally
+  const logged = getLogged();
+  const exists = logged.findIndex(r => r.date === date);
+  if (exists > -1) logged[exists] = record; else logged.push(record);
+  saveLogged(logged);
+
+  // Clear form
+  document.getElementById('injNotes').value = '';
+
+  const url = getUrl();
+  if (!url) {
+    // Queue for later
+    const pending = getPending();
+    pending.push(record);
+    savePending(pending);
+    updatePendingBanner();
+    showToast('Saved locally - no backend set', 'success');
+  } else {
+    await pushRecord(record);
+  }
+
+  updateNextCard();
+  renderHistory();
+}
+
+async function pushRecord(record) {
+  const btn = document.getElementById('logBtn');
+  btn.disabled = true;
+  btn.textContent = 'SAVING...';
+  setStatus('busy', 'Syncing...');
+
+  const url = getUrl();
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      body: JSON.stringify(record),
+    });
+    const json = await res.json();
+    if (json.status === 'ok') {
+      showToast('Logged and synced', 'success');
+      setStatus('ok', 'Synced just now');
+    } else {
+      throw new Error(json.error || 'Unknown error');
+    }
+  } catch (e) {
+    // Queue it
+    const pending = getPending();
+    pending.push(record);
+    savePending(pending);
+    updatePendingBanner();
+    showToast('Saved - will sync when online', 'error');
+    setStatus('err', 'Offline - queued');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'LOG INJECTION';
+  }
+}
+
+async function syncPending() {
+  const pending = getPending();
+  if (pending.length === 0) { showToast('Nothing to sync', ''); return; }
+  const url = getUrl();
+  if (!url) { showToast('Set backend URL first', 'error'); return; }
+
+  setStatus('busy', `Syncing ${pending.length} records...`);
+  const failed = [];
+  for (const record of pending) {
+    try {
+      const res = await fetch(url, { method: 'POST', body: JSON.stringify(record) });
+      const json = await res.json();
+      if (json.status !== 'ok') throw new Error();
+    } catch {
+      failed.push(record);
+    }
+  }
+  savePending(failed);
+  updatePendingBanner();
+  if (failed.length === 0) {
+    setStatus('ok', 'All synced');
+    showToast('All synced', 'success');
+  } else {
+    setStatus('err', `${failed.length} failed`);
+    showToast(`${failed.length} records failed`, 'error');
+  }
+}
+
+// ── STATUS ──
+function setStatus(state, msg) {
+  const dot  = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+  dot.className  = 'dot ' + state;
+  text.textContent = msg;
+}
+
+async function checkBackend() {
+  const url = getUrl();
+  if (!url) {
+    setStatus('err', 'No backend - tap Config to set URL');
+    return;
+  }
+  setStatus('busy', 'Checking...');
+  try {
+    const res  = await fetch(url + '?ping=1');
+    const json = await res.json();
+    if (json.status === 'ok') {
+      setStatus('ok', 'Backend connected');
+      // Pull history from sheet
+      await pullHistory();
+    } else throw new Error();
+  } catch {
+    setStatus('err', 'Backend unreachable - using local cache');
+  }
+}
+
+async function pullHistory() {
+  const url = getUrl();
+  if (!url) return;
+  try {
+    const res  = await fetch(url + '?action=list');
+    const json = await res.json();
+    if (json.status === 'ok' && Array.isArray(json.data)) {
+      saveLogged(json.data);
+      renderHistory();
+      updateNextCard();
+    }
+  } catch { /* offline, use local */ }
+}
+
+// ── SETTINGS ──
+function toggleUrlInput() {
+  const wrap = document.getElementById('urlInputWrap');
+  const showing = wrap.style.display !== 'none';
+  wrap.style.display = showing ? 'none' : 'block';
+  if (!showing) {
+    document.getElementById('urlInput').value = getUrl();
+  }
+}
+
+function saveUrl() {
+  const val = document.getElementById('urlInput').value.trim();
+  localStorage.setItem(KEY_URL, val);
+  document.getElementById('urlInputWrap').style.display = 'none';
+  showToast('URL saved', 'success');
+  checkBackend();
+}
+
+function clearPending() {
+  if (confirm('Clear all unsynced records? This cannot be undone.')) {
+    savePending([]);
+    updatePendingBanner();
+    showToast('Cleared', '');
+  }
+}
+
+// ── TABS ──
+function showTab(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  const tabs = ['log', 'history', 'settings'];
+  document.querySelectorAll('.tab')[tabs.indexOf(name)].classList.add('active');
+  if (name === 'history') renderHistory();
+}
+
+// ── TOAST ──
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className   = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.classList.remove('show'); }, 2500);
+}
+
+// ── APPS SCRIPT CODE ──
+const SCRIPT = `function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sh = ss.getSheetByName('Log') || ss.insertSheet('Log');
+    if (sh.getLastRow() === 0) {
+      sh.appendRow(['Date','Site','Dose (mL)','By','Notes','Logged At']);
+    }
+    sh.appendRow([data.date, data.site, data.dose, data.by, data.notes, data.loggedAt]);
+    return ContentService.createTextOutput(JSON.stringify({status:'ok'}))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({status:'error',error:err.message}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doGet(e) {
+  var p = e.parameter;
+  if (p.ping) {
+    return ContentService.createTextOutput(JSON.stringify({status:'ok'}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  if (p.action === 'list') {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sh = ss.getSheetByName('Log');
+    if (!sh || sh.getLastRow() < 2) {
+      return ContentService.createTextOutput(JSON.stringify({status:'ok',data:[]}))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    var rows = sh.getRange(2, 1, sh.getLastRow()-1, 6).getValues();
+    var data = rows.map(function(r) {
+      return {date:r[0],site:r[1],dose:r[2],by:r[3],notes:r[4],loggedAt:r[5]};
+    });
+    return ContentService.createTextOutput(JSON.stringify({status:'ok',data:data}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  return ContentService.createTextOutput(JSON.stringify({status:'ok'}))
+    .setMimeType(ContentService.MimeType.JSON);
+}`;
+
+function copyScript() {
+  navigator.clipboard.writeText(SCRIPT).then(() => showToast('Copied!', 'success'));
+}
+
+// ── INIT ──
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('scriptCode').textContent = SCRIPT;
+  document.getElementById('injDate').value = fmtDate(new Date());
+  updateNextCard();
+  renderHistory();
+  updatePendingBanner();
+  checkBackend();
+
+  // Auto-retry sync when coming online
+  window.addEventListener('online', () => {
+    setStatus('busy', 'Back online - syncing...');
+    syncPending().then(() => checkBackend());
+  });
+  window.addEventListener('offline', () => {
+    setStatus('err', 'Offline - injections queued locally');
+  });
+});
+</script>
+</body>
+</html>
