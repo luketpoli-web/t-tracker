@@ -6,6 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="T Tracker">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>T Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@700;800&display=swap" rel="stylesheet">
@@ -368,7 +369,7 @@ input[type="date"].text-field { color-scheme: dark; }
     </div>
     <div class="form-group">
       <label class="label">Administered by</label>
-      <input type="text" class="text-field" id="injBy" placeholder="Self / Carey / Clinic">
+      <input type="text" class="text-field" id="injBy" value="CAB" placeholder="Self / Carey / Clinic">
     </div>
     <div class="form-group">
       <label class="label">Notes (optional)</label>
@@ -442,7 +443,8 @@ const KEY_URL     = 'tt_url';
 const KEY_PENDING = 'tt_pending';
 const KEY_CACHE   = 'tt_cache';
 
-const getUrl     = () => localStorage.getItem(KEY_URL) || '';
+const DEFAULT_URL = 'https://script.google.com/macros/s/AKfycbwqr-x5meU2srYaXMSsiEM16MHOUVaRWQVe47OfnVQtginnC8MJkjfaT-APDIuOQLCgnA/exec';
+const getUrl     = () => localStorage.getItem(KEY_URL) || DEFAULT_URL;
 const getPending = () => JSON.parse(localStorage.getItem(KEY_PENDING) || '[]');
 const getCache   = () => JSON.parse(localStorage.getItem(KEY_CACHE)   || '[]');
 const savePending = a  => localStorage.setItem(KEY_PENDING, JSON.stringify(a));
@@ -658,11 +660,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderHistory();
   updatePendingBanner();
 
-  if (!getUrl()) {
-    document.getElementById('urlModal').classList.remove('hidden');
-  } else {
-    checkBackend();
-  }
+  checkBackend();
 
   window.addEventListener('online',  () => { setStatus('busy', 'Back online...'); syncPending().then(checkBackend); });
   window.addEventListener('offline', () => setStatus('err', 'Offline - logging locally'));
